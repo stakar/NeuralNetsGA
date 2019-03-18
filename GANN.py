@@ -128,7 +128,7 @@ class GenAlWeightsNN(object):
 
         self.pop_fit = self._pop_fitness(self.pop)
         self.past_pop = self.pop_fit.copy()
-            
+
     def _check_fitness(self,gene):
         
         w0,w1 = gene
@@ -139,29 +139,50 @@ class GenAlWeightsNN(object):
         layer2 = sigmoid(np.dot(layer1, w1))
         
         layer2_error = self.y_train - layer2
-        accuracy = np.mean(np.abs(layer2_error))
+        error = np.mean(np.abs(layer2_error))
+        
+        accuracy = (1 - error) 
+        
         return(accuracy)
+        
+    def validate(self):
+        best = self.pop[np.argmax(self.pop_fit)]
+#         print("Best individual accuracy on train dataset:{}".format(np.round(ga.best_ind,2)))
+        
+        w0,w1 = best
+        
+        #Validate
+        layer0 = self.X_test
+        layer1 = sigmoid(np.dot(layer0, w0))
+        layer2 = sigmoid(np.dot(layer1, w1))
+
+        layer2_error = self.y_test - layer2
+
+        error = np.mean(np.abs(layer2_error))
+        accuracy = (1 - error) * 100
+        return(accuracy)
+#         print("Best individual accuracy on test dataset:{}".format(np.round(accuracy,2)))
+        
         
     def _pop_fitness(self,pop):
         """ Checks the fitness for each individual in pop, then returns
         it """
         return np.array([self._check_fitness(n) for n in pop])
 
-
     @staticmethod
     def _pairing(mother,father):
         """ Method for pairing chromosomes and generating descendant
         s, array of characters with shape [2,n_gen] """
-        child_set = []
-        for i in range(2):
-            n_coef1 = np.random.randint(0,len(mother[0]))
-            n_coef2 = np.random.randint(0,len(mother[1]))
-            coef1 = np.concatenate([father[0][:n_coef1],
-                                             mother[0][n_coef1:]])
-            coef2 = np.concatenate([mother[1][:n_coef2],
-                                             father[1][n_coef2:]])
-            
-
+        n_coef1 = np.random.randint(0,len(mother[0]))
+        n_coef2 = np.random.randint(0,len(mother[1]))
+        coef1 = mother[0].copy()
+        coef2 = mother[1].copy()
+        for coef,parent in zip([coef1,coef2],[0,1]):
+            for n in range(len(mother[parent])):
+                for z in range(len(mother[parent][n])):
+                    dec = rin(0,2)
+                    if dec == 1:
+                        coef[n][z] = father[parent][n][z]
         return coef1,coef2
 
     def transform(self):
