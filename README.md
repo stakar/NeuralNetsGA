@@ -1,5 +1,5 @@
 # NeuralNetsGA
-Repository containing a project that targets evolving neural nets using genetic algorithms
+Repository containing a project that targets evolving neural nets using genetic algorithms.
 
 ## Technology
 Python 3.7
@@ -9,6 +9,11 @@ Scikit-Learn
 
 ## Progress
 Finished first version, uploaded presentation of results.
+
+## ToDo
+
+Next step is adding more interesting activation functions, and prepare it for evolving not only weights,
+but also architecture of NN.
 
 ## References
 
