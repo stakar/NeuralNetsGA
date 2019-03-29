@@ -41,13 +41,19 @@ def sigmoid(x, deriv = False):
     return 1/(1+np.exp(-x))
 
 
+def relu(x):
+    return np.maximum(0,x)
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import cross_val_score
+import math
+
+
 class GenAlWeightsNN(object):
 
     def __init__(self,n_pop=10,n_gen=17,
-                 mut_prob=0.02,desired_fit=0.6,max_gen = 300,
-                 scaler = MinMaxScaler(),
-                 clf = MLPClassifier(random_state=42,max_iter=800,
-                                     tol=1e-2)):
+                 mut_prob=0.02,desired_fit=0.8,max_gen = 300):
 
         """
         Features selector that uses Genetic Algorithm.
@@ -57,17 +63,6 @@ class GenAlWeightsNN(object):
         n_pop : int
         number of individuals in pop
 
-        n_gen : int
-        length of genotype, i.e. range of features among which we can select in
-        fact, it is determined by maximal length of Chromosome's attribute genot
-        ype.
-
-        scaler : class
-        sklearn scaler used for scalling data
-
-        clf : class
-        sklearn classifier used for classification
-
         mut_prob : float
         probability of mutation, default 0.02
 
@@ -75,7 +70,7 @@ class GenAlWeightsNN(object):
         accuracy that has to be achieved for algorithm to stop
 
         max_gen
-        maximum number of generation. The threshold that is not supposed to cros
+        maximum number of generations. The threshold that is not supposed to cros
         sed, the limit of algorithm. It is safety limit, that one can moderate,
         so algorithm does not work forever.
 
@@ -96,10 +91,6 @@ class GenAlWeightsNN(object):
         self.n_pop = n_pop
         self.n_gen = n_gen
         self.pop = np.zeros((n_pop,n_gen))
-        self.scaler = scaler
-        self.clf = clf
-        self.pipeline = make_pipeline(self.scaler,self.clf)
-        # self.pipeline = self.clf
         self.mut_prob = mut_prob
         self.desired_fit = desired_fit
         self.max_gen = max_gen
@@ -118,25 +109,42 @@ class GenAlWeightsNN(object):
         
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.data, self.target, test_size=0.33)
         self.pop = list()
-
-        #Creates individuals
+        #in this version number of neurons in first layer is constant
+        n_out1 = 5
+        n_out2 = self.y_train.shape[1]
+        
+        #Create individuals
         for n in range(self.n_pop):
-            w0 = 2*np.random.random((n_input,5))-1 
-            w1 = np.random.random((5,2))
-            new = np.array((w0,w1))            
+            #Weights of each layer
+            w0 = 2*np.random.random((n_input,n_out1))-1 
+            w1 = 2*np.random.random((n_out1,n_out2))-1
+            #Biases weights
+            bw1 = 2*np.random.random((n_out1))-1
+            bw2 = 2*np.random.random((n_out2))-1
+            #merge into individual
+            new = np.array((w0,w1,bw1,bw2))         
+            #append to population
             self.pop.append(new)
-
+        #create first population's fitness
         self.pop_fit = self._pop_fitness(self.pop)
+        #add first population's fitness to the hall of glory
+        #needed for later plotting
         self.past_pop = self.pop_fit.copy()
-
+            
     def _check_fitness(self,gene):
         
-        w0,w1 = gene
+        w0,w1,bw0,bw1 = gene
         
         #Feed forward
         layer0 = self.X_train
-        layer1 = sigmoid(np.dot(layer0, w0))
-        layer2 = sigmoid(np.dot(layer1, w1))
+        
+        #sum of weights plus bias for layer 1
+        wsum0 = np.dot(layer0, w0) + bw0
+        layer1 = sigmoid(wsum0)
+        
+        #sum of weights plus bias for layer 2
+        wsum1 = np.dot(layer1, w1) + bw1
+        layer2 = relu(wsum1)
         
         layer2_error = self.y_train - layer2
         error = np.mean(np.abs(layer2_error))
@@ -147,43 +155,83 @@ class GenAlWeightsNN(object):
         
     def validate(self):
         best = self.pop[np.argmax(self.pop_fit)]
-#         print("Best individual accuracy on train dataset:{}".format(np.round(ga.best_ind,2)))
         
-        w0,w1 = best
+        w0,w1,bw0,bw1 = best
         
         #Validate
         layer0 = self.X_test
-        layer1 = sigmoid(np.dot(layer0, w0))
-        layer2 = sigmoid(np.dot(layer1, w1))
+        layer1 = sigmoid(np.dot(layer0, w0)+bw0)
+        layer2 = relu(np.dot(layer1, w1)+bw1)
 
         layer2_error = self.y_test - layer2
 
         error = np.mean(np.abs(layer2_error))
         accuracy = (1 - error) * 100
-        return(accuracy)
-#         print("Best individual accuracy on test dataset:{}".format(np.round(accuracy,2)))
-        
+        return accuracy
         
     def _pop_fitness(self,pop):
         """ Checks the fitness for each individual in pop, then returns
         it """
         return np.array([self._check_fitness(n) for n in pop])
 
+
+#     @staticmethod
+#     def _pairing(mother,father):
+#         """ Method for pairing chromosomes and generating descendant
+#             Once called, generates the 
+#         """
+#         coef = mother.copy()
+#         for parent in range(2):
+#             for n in range(len(mother[parent])):
+#                 for z in range(len(mother[parent][n])):
+#                     dec = rin(0,2)
+#                     if dec == 1:
+#                         coef[parent][n][z] = father[parent][n][z]
+#         for parent in range(2,4):
+#             for n in range(len(mother[parent])):
+#                 dec = rin(0,2)
+#                 if dec == 1:
+#                     coef[parent][n] = father[parent][n]
+#         return coef
+    
+    
+    
     @staticmethod
     def _pairing(mother,father):
         """ Method for pairing chromosomes and generating descendant
         s, array of characters with shape [2,n_gen] """
-        n_coef1 = np.random.randint(0,len(mother[0]))
-        n_coef2 = np.random.randint(0,len(mother[1]))
         coef1 = mother[0].copy()
         coef2 = mother[1].copy()
+        coef3 = mother[2].copy()
+        coef4 = mother[3].copy()
         for coef,parent in zip([coef1,coef2],[0,1]):
             for n in range(len(mother[parent])):
                 for z in range(len(mother[parent][n])):
                     dec = rin(0,2)
                     if dec == 1:
                         coef[n][z] = father[parent][n][z]
-        return coef1,coef2
+        for coef,parent in zip([coef2,coef3],[2,3]):
+            for n in range(len(mother[parent])):
+                dec = rin(0,2)
+                if dec == 1:
+                    coef[n] = father[parent][n]
+        return coef1,coef2,coef3,coef4
+
+    @staticmethod
+    def _pairing2(mother,father):
+        """ Method for pairing chromosomes and generating descendant
+        s, array of characters with shape [2,n_gen] """
+        coef = mother.copy()
+        for parent in range(4):
+            n_coef = np.random.randint(0,len(mother[parent]))
+            dec = rin(0,2)
+            if dec == 1:
+                coef[parent] = np.concatenate([father[parent][:n_coef],
+                                                 mother[parent][n_coef:]])
+            else:
+                coef[parent] = np.concatenate([mother[parent][:n_coef],
+                                                 father[parent][n_coef:]])
+        return coef
 
     def transform(self):
         """ Transform, i.e. execute an algorithm.
@@ -204,9 +252,15 @@ class GenAlWeightsNN(object):
 
         """
         self.best_ind = np.max(self.past_pop)
+#         for n in range(100):
+
+        # For check, how does an algorithm performs, comment out line above,
+        # and comment line below.
+
         while self.best_ind < self.desired_fit:
             self.descendants_generation()
             self.pop_fit = self._pop_fitness(self.pop)
+              #Comment out line below to print every population's fitness
 #             if (self.n_generation % 1) == 0:
 #                 print(self.pop.shape)
             self.best_ind = np.max(self.pop_fit)
@@ -232,14 +286,17 @@ class GenAlWeightsNN(object):
         for n in range(n_prev):
               self.pop[n] = self.pop[np.argsort(self.pop_fit)[-(n_prev-n)]]
         #now,let's select best ones
-        # print(pop_fit)
         parents_pop = self.roulette()
         #Finally, we populate new generation by pairing randomly chosen best
         #individuals
         for n in range(n_prev,self.n_pop-1):
                 father = parents_pop[np.random.randint(self.n_pop)]
                 mother = parents_pop[np.random.randint(self.n_pop)]
-                children = self._pairing(mother,father)
+                dec = rin(0,100)
+                if dec == 1:
+                    children = self._pairing(mother,father)
+                else:
+                    children = self._pairing2(mother,father)
                 self.pop[(n)] = children
 
     def random_mutation(self):
@@ -259,7 +316,6 @@ class GenAlWeightsNN(object):
     def roulette_wheel(self):
         """ Method that returns roulette wheel, an array with shape [n_populatio
         n, low_individual_probability,high_individual_probability]"""
-#         pop_fitness = self._pop_fitness(self.pop)
         pop_fitness = self.pop_fit
         wheel = np.zeros((self.n_pop,3))
         prob = 0
@@ -305,5 +361,5 @@ class GenAlWeightsNN(object):
         plt.ylabel('Fitness')
         plt.legend()
         plt.title(title)
+#         plt.savefig(title)
         plt.show()
-        
