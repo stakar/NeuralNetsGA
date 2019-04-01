@@ -8,17 +8,18 @@ Pandas
 Scikit-Learn
 
 ## Progress
-Finished first version, uploaded presentation of results.
+Finished working on new version, now it provides better results,
 
 ## ToDo
 
-Next step is adding more interesting activation functions, and prepare it for evolving not only weights,
-but also architecture of NN.
+Now it is time to prepare mechanism for evolving achitecture of NN.
 
 ## References
 
-Neural Net numpy implementation taken from:
+Neural Net numpy implementation is partly taken from:
 https://www.kaggle.com/niyipop/2-layer-neural-network-from-scratch-using-numpy/data
+
+However, I added biases and new activation functions.
 
 Genetic algorithm implementation was adapted from author's own repository:
 https://github.com/stakar/Sig_Feat_Selector
